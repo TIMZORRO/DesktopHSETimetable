@@ -99,11 +99,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <None Include="bin\Debug\config\!outlet.config" />
-    <None Include="bin\Debug\config\13.03.20 1444.config" />
-    <None Include="bin\Debug\config\outlet.config" />
-    <None Include="bin\Debug\config\sd.config" />
-    <None Include="bin\Debug\config\Ошибка.config" />
+    <None Include="bin\Debug\config\start file\current_state.config" />
     <None Include="Properties\DataSources\DBConnector.datasource" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
