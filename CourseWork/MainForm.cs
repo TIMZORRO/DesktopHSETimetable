@@ -24,6 +24,8 @@ namespace CourseWork
 
             Start();
         }
+
+        #region StartUpMethods
         private void Start()
         {
             ConfigBuilder configBuilder = new ConfigBuilder();
@@ -70,16 +72,6 @@ namespace CourseWork
                 Coloring(i);
         }
 
-        private void добавитьToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ColorHighlight form = new ColorHighlight();
-            form.Owner = (Form)this;
-            form.ShowDialog();
-
-            if (form.DialogResult != DialogResult.Cancel)
-                Coloring(ColorConditions.Count - 1);
-        }
-
         private void Coloring(int index)
         {
             object[] arr = ColorConditions[index];
@@ -113,6 +105,18 @@ namespace CourseWork
                                         dataGridView1.Rows[j].DefaultCellStyle.BackColor = (Color)arr[4];
                                 break;
                         }
+        }
+        #endregion StartUpMethods
+
+        #region StripMenuItems
+        private void добавитьToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ColorHighlight form = new ColorHighlight();
+            form.Owner = (Form)this;
+            form.ShowDialog();
+
+            if (form.DialogResult != DialogResult.Cancel)
+                Coloring(ColorConditions.Count - 1);
         }
 
         private void изменитьToolStripMenuItem_Click(object sender, EventArgs e)
@@ -159,6 +163,43 @@ namespace CourseWork
             }
         }
 
+        private void сохранитьКонфигурациюToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ConfigBuilder cb = new ConfigBuilder();
+            cb.Colomns = Colomns;
+            cb.Filters = Filters;
+            cb.ColorConditions = ColorConditions;
+
+            SaveFileDialog SFD = new SaveFileDialog();
+            SFD.Filter = "Config Files|*.config";
+            SFD.Title = "Сохранение файла с текущими настройками";
+            SFD.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory + @"config";
+            if (SFD.ShowDialog()==DialogResult.OK)
+                cb.ConfigWriter(SFD.FileName);
+        }
+
+        private void выбратьНастройкиИзСохраненныхToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog OFD = new OpenFileDialog();
+            OFD.Filter = "Config Files|*.config";
+            OFD.Title = "Открытие файла с сохраненными настройками";
+            OFD.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory + @"config";
+            if (OFD.ShowDialog() == DialogResult.OK) 
+            {
+                ConfigBuilder cb = new ConfigBuilder();
+                cb.ConfigReader(OFD.FileName);
+                Colomns = cb.Colomns;
+                ColorConditions = cb.ColorConditions;
+                Filters = cb.Filters;
+                cb.ChangeStartPath(OFD.FileName);
+                toQuery = new List<string>();
+
+                FilterApplication();
+            }
+        }
+        #endregion StripMenuItems
+
+        #region MainFormFilters
         private void cbTeacher_SelectionChangeCommitted(object sender, EventArgs e)
         {
             foreach (string item in toQuery)
@@ -238,40 +279,6 @@ namespace CourseWork
             DBC.Query(toQuery);
             dataGridView1.DataSource = DBC.dt;
         }
-
-        private void сохранитьКонфигурациюToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ConfigBuilder cb = new ConfigBuilder();
-            cb.Colomns = Colomns;
-            cb.Filters = Filters;
-            cb.ColorConditions = ColorConditions;
-
-            SaveFileDialog SFD = new SaveFileDialog();
-            SFD.Filter = "Config Files|*.config";
-            SFD.Title = "Сохранение файла с текущими настройками";
-            SFD.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory + @"config";
-            if (SFD.ShowDialog()==DialogResult.OK)
-                cb.ConfigWriter(SFD.FileName);
-        }
-
-        private void выбратьНастройкиИзСохраненныхToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            OpenFileDialog OFD = new OpenFileDialog();
-            OFD.Filter = "Config Files|*.config";
-            OFD.Title = "Открытие файла с сохраненными настройками";
-            OFD.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory + @"config";
-            if (OFD.ShowDialog() == DialogResult.OK) 
-            {
-                ConfigBuilder cb = new ConfigBuilder();
-                cb.ConfigReader(OFD.FileName);
-                Colomns = cb.Colomns;
-                ColorConditions = cb.ColorConditions;
-                Filters = cb.Filters;
-                cb.ChangeStartPath(OFD.FileName);
-                toQuery = new List<string>();
-
-                FilterApplication();
-            }
-        }
+        #endregion MainFormFilters
     }
 }
