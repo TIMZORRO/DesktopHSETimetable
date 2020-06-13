@@ -49,45 +49,45 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConfigBuilder.cs" />
-    <Compile Include="DataReader.cs" />
-    <Compile Include="DBConnector.cs" />
-    <Compile Include="ListColorHighlight.cs">
+    <Compile Include="ControlClasses\ConfigBuilder.cs" />
+    <Compile Include="ControlClasses\DataReader.cs" />
+    <Compile Include="ControlClasses\DBConnector.cs" />
+    <Compile Include="Forms\ListColorHighlight.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ListColorHighlight.Designer.cs">
+    <Compile Include="Forms\ListColorHighlight.Designer.cs">
       <DependentUpon>ListColorHighlight.cs</DependentUpon>
     </Compile>
-    <Compile Include="MainForm.cs">
+    <Compile Include="Forms\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="MainForm.Designer.cs">
+    <Compile Include="Forms\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="ColorHighlight.cs">
+    <Compile Include="Forms\ColorHighlight.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ColorHighlight.Designer.cs">
+    <Compile Include="Forms\ColorHighlight.Designer.cs">
       <DependentUpon>ColorHighlight.cs</DependentUpon>
     </Compile>
-    <Compile Include="Parameters.cs">
+    <Compile Include="Forms\Parameters.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Parameters.Designer.cs">
+    <Compile Include="Forms\Parameters.Designer.cs">
       <DependentUpon>Parameters.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="ListColorHighlight.resx">
+    <EmbeddedResource Include="Forms\ListColorHighlight.resx">
       <DependentUpon>ListColorHighlight.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="MainForm.resx">
+    <EmbeddedResource Include="Forms\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ColorHighlight.resx">
+    <EmbeddedResource Include="Forms\ColorHighlight.resx">
       <DependentUpon>ColorHighlight.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Parameters.resx">
+    <EmbeddedResource Include="Forms\Parameters.resx">
       <DependentUpon>Parameters.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -99,6 +99,11 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include="bin\Debug\config\!outlet.config" />
+    <None Include="bin\Debug\config\13.03.20 1444.config" />
+    <None Include="bin\Debug\config\outlet.config" />
+    <None Include="bin\Debug\config\sd.config" />
+    <None Include="bin\Debug\config\Ошибка.config" />
     <None Include="Properties\DataSources\DBConnector.datasource" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
