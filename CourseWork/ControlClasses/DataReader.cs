@@ -229,7 +229,7 @@ namespace CourseWork
                         gCell = ws.Cells[gCell.Row, zCell.MergeArea.Column + zCell.MergeArea.Count];
                     }
                     vCell = ws.Cells[vCell.Row + 1, vCell.Column];
-                    if (vCell.Text.Split('\n')[0] == "1" || vCell.Text.Split('\n')[0] == "")
+                    if (dCell.MergeArea.Count + dCell.Row - 1 < vCell.Row)
                     {
                         dCell = ws.Cells[dCell.Row + dCell.MergeArea.Count, dCell.Column];
                         date = dCell.Text.ToString().Split();
