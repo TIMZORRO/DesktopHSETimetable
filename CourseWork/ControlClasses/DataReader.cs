@@ -9,9 +9,8 @@ using System.Text.RegularExpressions;
 
 namespace CourseWork
 {
-    class DataReader
+    class DataReader : IDisposable
     {
-        private string Way { get; } = AppDomain.CurrentDomain.BaseDirectory + "Первичные файлы";
         private string[] WeekDays { get; } = new string[] { "понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресение" };
         private string[] Months { get; } = new string[] { "январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь" };
         private string[] MonthsRod { get; } = new string[] { "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря" };
@@ -21,39 +20,26 @@ namespace CourseWork
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
-        public void Starter()
+        public void ReadOneFile(string path)
         {
+            if (CheckExcel(path))
+            {
+                ExtractFile(path);
+            }
+        }
 
-            string[] files = Directory.GetFiles(Way);
+        public void ReadFromDirectory(string path)
+        {
+            string[] files = Directory.GetFiles(path);
             foreach (string file in files)
             {
-                string[] arr_file = file.Replace(Way + @"\", "").ToLower().Split();
-                if (arr_file[0] == "расписание" && (arr_file[1] == "занятий" || arr_file[1] == "сессия" || arr_file[1] == "сессии"))
+                if (CheckExcel(file))
                 {
-                    ReadBacalavr(file);
-                }
-                else if (arr_file[0] == "магистратура")
-                {
-                    ReadMagistr(file);
-                }
-                else if (Months.Contains(arr_file[0]))
-                {
-                    ReadPartTime(file);
-                }
-                else if (arr_file[0][arr_file[0].Length - 1] == 'з')
-                {
-                    ReadDistance(file);
-                }
-                else if (arr_file[arr_file.Length-1].Split('.')[0] == "(фак" || arr_file[arr_file.Length - 1].Split('.')[0] == "(фак)")
-                {
-                    ReadElective(file);
-                }
-                else if (arr_file[0] == "расписание" && arr_file[1].Split('.')[0] == "пересдач")
-                {
-                    ReadRetake(file);
+                    ExtractFile(file);
                 }
             }
         }
+
         public void Dispose()
         {
             Troubles = new List<string>(0);
@@ -65,12 +51,50 @@ namespace CourseWork
             GetWindowThreadProcessId((IntPtr)hWnd, out processID);
             Process.GetProcessById((int)processID).Kill();
         }
-        private void ReadBacalavr(string file)
+
+        private bool CheckExcel(string file)
+        {
+            string[] partname = file.Split('.');
+            return partname[partname.Length - 1] == "xls" || partname[partname.Length - 1] == "xlsx";
+        }
+
+        private void ExtractFile(string file)
+        {
+            string[] partpath = file.Split('\\');
+            string[] arr_file = partpath[partpath.Length - 1].ToLower().Split();
+            if (arr_file[0] == "расписание" && (arr_file[1] == "занятий" || arr_file[1] == "сессия" || arr_file[1] == "сессии"))
+            {
+                ExtractBacalavr(file);
+            }
+            else if (arr_file[0] == "магистратура")
+            {
+                ExtractMagistr(file);
+            }
+            else if (Months.Contains(arr_file[0]))
+            {
+                ExtractPartTime(file);
+            }
+            else if (arr_file[0][arr_file[0].Length - 1] == 'з')
+            {
+                ExtractDistance(file);
+            }
+            else if (arr_file[arr_file.Length - 1].Split('.')[0] == "(фак" || arr_file[arr_file.Length - 1].Split('.')[0] == "(фак)")
+            {
+                ExtractElective(file);
+            }
+            else if (arr_file[0] == "расписание" && arr_file[1].Split('.')[0] == "пересдач")
+            {
+                ExtractRetake(file);
+            }
+        }
+
+        private void ExtractBacalavr(string file)
         {
             Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
-                string[] arr_file = file.Replace(Way + @"\", "").ToLower().Split();
+                string[] partpath = file.Split('\\');
+                string[] arr_file = partpath[partpath.Length - 1].ToLower().Split();
                 Range cCell = ws.Cells[2, "A"];
                 Range dCell = ws.Cells[4, "A"];
                 Range vCell = ws.Cells[4, "B"];
@@ -238,12 +262,14 @@ namespace CourseWork
             }
             wb.Close();
         }
-        private void ReadMagistr(string file)
+
+        private void ExtractMagistr(string file)
         {
             Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
-                string[] arr_file = file.Replace(Way + @"\", "").ToLower().Split();
+                string[] partpath = file.Split('\\');
+                string[] arr_file = partpath[partpath.Length - 1].ToLower().Split();
                 Range dCell = ws.Cells[10, "A"];
                 Range vCell = ws.Cells[10, "C"];
 
@@ -347,7 +373,8 @@ namespace CourseWork
             }
             wb.Close();
         }
-        private void ReadPartTime(string file)
+
+        private void ExtractPartTime(string file)
         {
             Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
@@ -428,7 +455,8 @@ namespace CourseWork
                 }
             }
         }
-        private void ReadDistance(string file)
+
+        private void ExtractDistance(string file)
         {
             Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
@@ -439,7 +467,8 @@ namespace CourseWork
                 if (wsName.Length == 1)
                     break;
 
-                string[] arr_file = file.Replace(Way + @"\", "").ToLower().Split();
+                string[] partpath = file.Split('\\');
+                string[] arr_file = partpath[partpath.Length - 1].ToLower().Split();
                 Range dCell = ws.Cells[7, "A"];
                 Range vCell = ws.Cells[8, "B"];
                 if (vCell.Text == "")
@@ -561,7 +590,8 @@ namespace CourseWork
             }
             wb.Close();
         }
-        private void ReadRetake(string file)
+
+        private void ExtractRetake(string file)
         {
             Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
@@ -639,7 +669,8 @@ namespace CourseWork
                 }
             }
         }
-        private void ReadElective(string file)
+
+        private void ExtractElective(string file)
         {
             Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)

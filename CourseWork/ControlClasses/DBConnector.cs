@@ -173,7 +173,7 @@ namespace CourseWork
             List<string[]> EduProgrames = new List<string[]>();
             List<string> EduTypes = new List<string>();
             DataReader dr = new DataReader();
-            dr.Starter();
+            dr.ReadFromDirectory(AppDomain.CurrentDomain.BaseDirectory + "Первичные файлы");
 
             SqlConnection sqlConnection = new SqlConnection(ServerInfo);
             sqlConnection.Open();
