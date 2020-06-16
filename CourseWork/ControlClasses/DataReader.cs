@@ -14,9 +14,12 @@ namespace CourseWork
         private string[] WeekDays { get; } = new string[] { "понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресение" };
         private string[] Months { get; } = new string[] { "январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь" };
         private string[] MonthsRod { get; } = new string[] { "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря" };
-        public List<string> Troubles { get; set; } = new List<string>();
-        public List<string[]> Data { get; set; } = new List<string[]>();
-        private Application _excelApp = new Application();
+        public List<string> Troubles { get; private set; } = new List<string>();
+
+        public List<string[]> Data { get; private set; } = new List<string[]>();
+
+        private Application excelApp = new Application();
+
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
@@ -45,116 +48,141 @@ namespace CourseWork
             Troubles = new List<string>(0);
             Data = new List<string[]>(0);
 
-            int hWnd = _excelApp.Application.Hwnd;
+            excelApp.Quit();
+
+            int hWnd = excelApp.Application.Hwnd;
             uint processID;
 
             GetWindowThreadProcessId((IntPtr)hWnd, out processID);
             Process.GetProcessById((int)processID).Kill();
         }
 
-        private bool CheckExcel(string file)
+        private bool CheckExcel(string filePath)
         {
-            string[] partname = file.Split('.');
+            string[] partname = filePath.Split('.');
             return partname[partname.Length - 1] == "xls" || partname[partname.Length - 1] == "xlsx";
         }
 
-        private void ExtractFile(string file)
+        private void ExtractFile(string filePath)
         {
-            string[] partpath = file.Split('\\');
+            string[] partpath = filePath.Split('\\');
             string[] arr_file = partpath[partpath.Length - 1].ToLower().Split();
             if (arr_file[0] == "расписание" && (arr_file[1] == "занятий" || arr_file[1] == "сессия" || arr_file[1] == "сессии"))
             {
-                ExtractBacalavr(file);
+                ExtractBacalavr(filePath);
             }
             else if (arr_file[0] == "магистратура")
             {
-                ExtractMagistr(file);
+                ExtractMagistr(filePath);
             }
             else if (Months.Contains(arr_file[0]))
             {
-                ExtractPartTime(file);
+                ExtractPartTime(filePath);
             }
             else if (arr_file[0][arr_file[0].Length - 1] == 'з')
             {
-                ExtractDistance(file);
+                ExtractDistance(filePath);
             }
             else if (arr_file[arr_file.Length - 1].Split('.')[0] == "(фак" || arr_file[arr_file.Length - 1].Split('.')[0] == "(фак)")
             {
-                ExtractElective(file);
+                ExtractElective(filePath);
             }
             else if (arr_file[0] == "расписание" && arr_file[1].Split('.')[0] == "пересдач")
             {
-                ExtractRetake(file);
+                ExtractRetake(filePath);
             }
         }
 
-        private void ExtractBacalavr(string file)
+        private void ExtractBacalavr(string filePath)
         {
-            Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
+            Workbook wb = excelApp.Workbooks.Open(filePath, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
-                string[] partpath = file.Split('\\');
-                string[] arr_file = partpath[partpath.Length - 1].ToLower().Split();
-                Range cCell = ws.Cells[2, "A"];
-                Range dCell = ws.Cells[4, "A"];
-                Range vCell = ws.Cells[4, "B"];
+                string[] partpath = filePath.Split('\\');
+                string[] arr_file = partpath[partpath.Length - 1].ToLower().Split(); // набор слов из названия для дальнейшего определения типа обработки
 
-                string[] date = dCell.Text.ToString().Split();
+                // объявление начальных значений ячеек с информацией о курсе, дате и времени
+                Range courseCell = ws.Cells[2, "A"];
+                Range dateCell = ws.Cells[4, "A"];
+                Range timeCell = ws.Cells[4, "B"];
+
+                string[] date = dateCell.Text.ToString().Split(); // в ячейке с датой хранится название дня недели и собственно дата
+
                 while (WeekDays.Contains(date[0].ToLower()))
                 {
-                    Range gCell = ws.Cells[3, "C"];
-                    while (gCell.Text != "")
+                    Range groupCell = ws.Cells[3, "C"]; // ячейка с информацией о группе
+                    while (groupCell.Text != "")
                     {
-                        Range zCell = ws.Cells[vCell.Row, gCell.Column];
-                        if (zCell.Text != "")
+                        Range lessonCell = ws.Cells[timeCell.Row, groupCell.Column]; // ячейка с информацией о занятии
+                        if (lessonCell.Text != "")
                         {
+                            // Ячейки с информацией о занятии может быть нестандартной, 
+                            // поэтому при любом исключении в секции чтения данных оттуда
+                            // следует считать, что нарушена структура ячейки в исходном файле
+                            // В таком случае нужно сохранить данные об этом занятии отдельно, 
+                            // чтобы была возможность их отдельно обработать с участием пользователя
                             try
                             {
                                 int i = Data.Count;
                                 Data.Add(new string[11]);
                                 Data[i][0] = "Бакалавриат";
-                                Data[i][1] = cCell.Text.ToString().Split()[0].Trim();
-                                Data[i][2] = date[1].Trim();
+                                Data[i][1] = courseCell.Text.ToString().Split()[0]; // в ячейке хранится информация вида "2 курс", поэтому выбирается только первое слово
+                                Data[i][2] = date[1];
 
-                                string pattern = @"\n\s*\n";
-                                string pattern2 = @"\s+";
+                                string pattern = @"\n\s*\n"; // патерн для пустых строк
+                                string pattern2 = @"\s+"; // паттерн для 2-х и более пробельных символов
                                 Regex reg = new Regex(pattern);
                                 Regex reg2 = new Regex(pattern2);
-                                Data[i][3] = reg.Replace(vCell.Text, "\n").Split('\n')[1].Split('-')[0].Trim().Replace('.', ':');
-                                Data[i][4] = gCell.Text.Trim();
-                                string[] zan = reg.Replace(zCell.Text.Trim(), "\n").Split('\n');
 
-                                if (zan.Length == 1)
+                                // в ячейке с информацией о времени содержится также номер занятия
+                                // Номер занятия отделяется от времени пустой строкой
+                                // Время указано в виде "время начала - время конца"
+                                // Для приложения нужно только время начала
+                                // Также часы и минуты могут разделяться двоеточием или точкой
+                                // Необходимо привести к единому виду
+                                Data[i][3] = reg.Replace(timeCell.Text, "\n").Split('\n')[1].Split('-')[0].Trim().Replace('.', ':');
+
+                                Data[i][4] = groupCell.Text.Trim();
+
+                                // В ячейке с информацией о занятиях хранятся данные в следующей структуре
+                                // дисциплина1\n\nпреподаватель1 (аудитория1\[корпус1\][, подгруппа1])
+                                // [\nпреподаватель2 (аудитория2\[корпус2\][, подгруппа2])]
+                                // [\nдисциплина2\n\nпреподаватель3 (аудитория3\[корпус3\][, подгруппа3]) 
+                                // [\nпреподаватель4 (аудитория4\[корпус4\][, подгруппа4])]]
+                                // Символами [ ] обозначены необязательные элементы, 
+                                // а \[ \] - реально присутствующие в тексте ячейки скобки
+                                
+                                // Уничтожение лишних строк и разделение по строкам
+                                string[] lessonLines = reg.Replace(lessonCell.Text.Trim(), "\n").Split('\n');
+
+                                // Если строка точно нестандартная - выбросить исключение для перехода в обработчик
+                                if (lessonLines.Length == 1)
                                 {
-                                    Data.Remove(Data.Last());
+                                    throw new Exception();
                                 }
-
-                                else if (arr_file[1] == "занятий")
+                                // TODO: Переписать блоки для занятий и для сессии в один блок
+                                else if (arr_file[1] == "занятий") // для файлов с обычными занятиями
                                 {
-                                    for (int n = 0, m = 1; m < zan.Length; n += 2, m += 2)
+                                    for (int n = 0, m = 1; m < lessonLines.Length; n += 2, m += 2)
                                     {
                                         if (n > 0)
                                         {
                                             i = Data.Count;
-                                            Data.Add(new string[11]);
-                                            Data[i][0] = Data[i - 1][0];
-                                            Data[i][1] = Data[i - 1][1];
-                                            Data[i][2] = Data[i - 1][2];
-                                            Data[i][3] = Data[i - 1][3];
-                                            Data[i][4] = Data[i - 1][4];
+                                            Data.Add((string[])Data.Last().Clone());
+                                            Data[i][10] = null;
                                         }
-                                        zan[m] = reg2.Replace(zan[m], " ");
+                                        lessonLines[m] = reg2.Replace(lessonLines[m], " ");
 
-                                        string[] help = zan[n].Split('(');
+                                        string[] help = lessonLines[n].Split('(');
                                         Data[i][5] = help[0].Trim().ToLower();
                                         if (help.Length > 1)
                                         {
                                             Data[i][10] = "Лекция";
                                         }
 
-                                        help = zan[m].Split();
+                                        help = lessonLines[m].Split();
                                         Data[i][6] = help[0].Trim() + " " + help[1].Trim();
-                                        help = zan[m].Split('(', '[', ',', ')', ']');
+                                        help = lessonLines[m].Split('(', '[', ',', ')', ']');
                                         Data[i][7] = help[1].Trim();
                                         Data[i][8] = help[2].Trim();
                                         if (help.Length > 5)
@@ -162,7 +190,7 @@ namespace CourseWork
                                         else
                                             Data[i][9] = "0";
                                         if (Data[i][10] != null) { }
-                                        else if (zCell.MergeCells || zCell.Font.Underline == 2)
+                                        else if (lessonCell.MergeCells || lessonCell.Font.Underline == 2)
                                             Data[i][10] = "Лекция";
                                         else if (Data[i][9] == "0")
                                             Data[i][10] = "Семинар";
@@ -173,40 +201,33 @@ namespace CourseWork
 
                                 else
                                 {
-                                    string[] help = zan[0].Split('(')[0].Split();
+                                    string[] help = lessonLines[0].Split('(')[0].Split();
                                     for (int j = 0; j < help.Length; j++)
                                         if (help[j].ToLower() != "экзамен")
                                             Data[i][5] += " " + help[j];
                                     Data[i][5] = Data[i][5].Trim().ToLower();
                                     Data[i][10] = "ЭКЗАМЕН";
 
-                                    for (int m = 1; m < zan.Length; m++)
+                                    for (int m = 1; m < lessonLines.Length; m++)
                                     {
                                         if (m > 1)
                                         {
                                             i = Data.Count;
-                                            Data.Add(new string[11]);
-                                            Data[i][0] = Data[i - 1][0];
-                                            Data[i][1] = Data[i - 1][1];
-                                            Data[i][2] = Data[i - 1][2];
-                                            Data[i][3] = Data[i - 1][3];
-                                            Data[i][4] = Data[i - 1][4];
-                                            Data[i][5] = Data[i - 1][5];
-                                            Data[i][10] = Data[i - 1][10];
+                                            Data.Add((string[])Data.Last().Clone());
                                         }
-                                        if (zan[m].ToLower().Contains("экзамен"))
+                                        if (lessonLines[m].ToLower().Contains("экзамен"))
                                         {
-                                            string[] strs = zan[m].Split('(')[0].Split();
+                                            string[] strs = lessonLines[m].Split('(')[0].Split();
                                             for (int j = 0; j < strs.Length; j++)
                                                 if (strs[j].ToLower() != "экзамен")
                                                     Data[i][5] += " " + strs[j];
 
                                             m++;
                                         }
-                                        zan[m] = reg2.Replace(zan[m], " ");
+                                        lessonLines[m] = reg2.Replace(lessonLines[m], " ");
 
-                                        string[] profinfo = zan[m].Split(',');
-                                        help = zan[m].Split('(', '[', ']');
+                                        string[] profinfo = lessonLines[m].Split(',');
+                                        help = lessonLines[m].Split('(', '[', ']');
                                         Data[i][7] = help[1].Trim();
                                         Data[i][8] = help[2].Trim();
 
@@ -220,17 +241,7 @@ namespace CourseWork
                                             if (p > 0)
                                             {
                                                 i = Data.Count;
-                                                Data.Add(new string[11]);
-                                                Data[i][0] = Data[i - 1][0];
-                                                Data[i][1] = Data[i - 1][1];
-                                                Data[i][2] = Data[i - 1][2];
-                                                Data[i][3] = Data[i - 1][3];
-                                                Data[i][4] = Data[i - 1][4];
-                                                Data[i][5] = Data[i - 1][5];
-                                                Data[i][7] = Data[i - 1][7];
-                                                Data[i][8] = Data[i - 1][8];
-                                                Data[i][9] = Data[i - 1][9];
-                                                Data[i][10] = Data[i - 1][10];
+                                                Data.Add((string[])Data.Last().Clone());
                                             }
 
                                             help = profinfo[p].Trim().Split();
@@ -244,19 +255,19 @@ namespace CourseWork
                                 string error = "";
                                 for (int i = 0; i < 5; i++)
                                     error += Data.Last()[i] + " ";
-                                error += zCell.Text;
+                                error += lessonCell.Text;
                                 Troubles.Add(error);
                                 Data.Remove(Data.Last());
                             }
                         }
 
-                        gCell = ws.Cells[gCell.Row, zCell.MergeArea.Column + zCell.MergeArea.Count];
+                        groupCell = ws.Cells[groupCell.Row, lessonCell.MergeArea.Column + lessonCell.MergeArea.Count];
                     }
-                    vCell = ws.Cells[vCell.Row + 1, vCell.Column];
-                    if (dCell.MergeArea.Count + dCell.Row - 1 < vCell.Row)
+                    timeCell = ws.Cells[timeCell.Row + 1, timeCell.Column];
+                    if (dateCell.MergeArea.Count + dateCell.Row - 1 < timeCell.Row)
                     {
-                        dCell = ws.Cells[dCell.Row + dCell.MergeArea.Count, dCell.Column];
-                        date = dCell.Text.ToString().Split();
+                        dateCell = ws.Cells[dateCell.Row + dateCell.MergeArea.Count, dateCell.Column];
+                        date = dateCell.Text.ToString().Split();
                     }
                 }
             }
@@ -265,7 +276,7 @@ namespace CourseWork
 
         private void ExtractMagistr(string file)
         {
-            Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
+            Workbook wb = excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
                 string[] partpath = file.Split('\\');
@@ -376,7 +387,7 @@ namespace CourseWork
 
         private void ExtractPartTime(string file)
         {
-            Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
+            Workbook wb = excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
                 Range dCell = ws.Cells[4, "A"];
@@ -458,7 +469,7 @@ namespace CourseWork
 
         private void ExtractDistance(string file)
         {
-            Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
+            Workbook wb = excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
                 string pattern = @"\s+";
@@ -511,12 +522,7 @@ namespace CourseWork
                                         if (j > 1)
                                         {
                                             i = Data.Count;
-                                            Data.Add(new string[11]);
-                                            Data[i][0] = Data[i - 1][0];
-                                            Data[i][1] = Data[i - 1][1];
-                                            Data[i][2] = Data[i - 1][2];
-                                            Data[i][3] = Data[i - 1][3];
-                                            Data[i][4] = Data[i - 1][4];
+                                            Data.Add((string[])Data.Last().Clone());
                                         }
                                         string[] help = reg.Replace(minors[j].Trim(), " ").Split('(')[0].Trim().Split();
                                         for (int k = 0; k < help.Length - 2; k++)
@@ -539,13 +545,7 @@ namespace CourseWork
                                         if (j > 0)
                                         {
                                             i = Data.Count;
-                                            Data.Add(new string[11]);
-                                            Data[i][0] = Data[i - 1][0];
-                                            Data[i][1] = Data[i - 1][1];
-                                            Data[i][2] = Data[i - 1][2];
-                                            Data[i][3] = Data[i - 1][3];
-                                            Data[i][4] = Data[i - 1][4];
-                                            Data[i][5] = Data[i - 1][5];
+                                            Data.Add((string[])Data.Last().Clone());
                                         }
                                         string[] help = teachers[j].Split('(');
                                         Data[i][6] = help[0].Trim();
@@ -593,7 +593,7 @@ namespace CourseWork
 
         private void ExtractRetake(string file)
         {
-            Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
+            Workbook wb = excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
                 Range cCell = ws.Cells[4, "A"];
@@ -636,17 +636,7 @@ namespace CourseWork
                                 if (n > 0)
                                 {
                                     i = Data.Count;
-                                    Data.Add(new string[11]);
-                                    Data[i][0] = Data[i - 1][0];
-                                    Data[i][1] = Data[i - 1][1];
-                                    Data[i][2] = Data[i - 1][2];
-                                    Data[i][3] = Data[i - 1][3];
-                                    Data[i][4] = Data[i - 1][4];
-                                    Data[i][5] = Data[i - 1][5];
-                                    Data[i][7] = Data[i - 1][7];
-                                    Data[i][8] = Data[i - 1][8];
-                                    Data[i][9] = Data[i - 1][9];
-                                    Data[i][10] = Data[i - 1][10];
+                                    Data.Add((string[])Data.Last().Clone());
                                 }
                                 Data[i][6] = professors[n].Trim(); ;
                             }
@@ -672,7 +662,7 @@ namespace CourseWork
 
         private void ExtractElective(string file)
         {
-            Workbook wb = _excelApp.Workbooks.Open(file, 0, true);
+            Workbook wb = excelApp.Workbooks.Open(file, 0, true);
             foreach (Worksheet ws in wb.Worksheets)
             {
                 Range dCell = ws.Cells[11, "B"];
