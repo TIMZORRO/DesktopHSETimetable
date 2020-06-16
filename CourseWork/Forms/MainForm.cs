@@ -9,7 +9,7 @@ namespace CourseWork
     public partial class MainForm : Form
     {
         public DBConnector DBC { get; set; } = new DBConnector();
-        public List<string> Colomns { get; set; } = new List<string>();// { "Дисциплина", "Преподаватель", "Аудитория", "Корпус", "Учебная группа", "Подгруппа", "Тип занятия", "Дата и время" };
+        public List<string> Colomns { get; set; } = new List<string>();
         public List<string> toQuery { get; set; } = new List<string>();
         public List<string> Filters { get; set; } = new List<string>();
         public List<object[]> ColorConditions { get; set; } = new List<object[]>();
@@ -48,9 +48,9 @@ namespace CourseWork
                     }
 
             toQuery.AddRange(Filters);
-            DBC.Query(toQuery);
+            DBC.SendQueryToDB(toQuery);
             DBC.ListUpdate();
-            dataGridView1.DataSource = DBC.dt;
+            dataGridView1.DataSource = DBC.Timetable;
             cbTeacher.DataSource = DBC.Professors;
             cbCourse.DataSource = DBC.Courses;
 
@@ -133,18 +133,65 @@ namespace CourseWork
 
         private void обновитьToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Вы собираетесь обновить базу данных, добавив в нее свежие данные о расписании. Это займет несколько минут. Продолжить?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            DialogResult result = MessageBox.Show("Вы собираетесь добавить в базу данных свежие данные о расписании. Это займет несколько минут. Продолжить?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
             if (result == DialogResult.Yes)
             {
-                DBC.DBUpdate();
-                DBC.Query(toQuery);
-                DBC.ListUpdate();
-                //dataGridView1.DataSource = DBC.dt;
-                //for (int i = 0; i < ColorConditions.Count; i++)
-                //    Coloring(i);
-                FilterApplication();
+                using (DataReader dataReader = new DataReader())
+                {
+                    using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+                    {
+                        dialog.Description = "Выберите папку, в которой содержатся файлы с расписаниями";
+                        dialog.SelectedPath = Environment.CurrentDirectory + @"\Первичные файлы";
+                        if (dialog.ShowDialog() == DialogResult.OK)
+                        {
+                            dataReader.ReadFromDirectory(dialog.SelectedPath);
+                            DBC.DBUpdate(dataReader);
+                            DBC.SendQueryToDB(toQuery);
+                            DBC.ListUpdate();
+                            FilterApplication();
 
-                MessageBox.Show("Данные обновлены!", "Сообщение", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("Данные обновлены!", "Сообщение", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void добавитьОдинФайлToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("Вы собираетесь добавить в базу данных свежие данные о расписании. Это займет несколько минут. Продолжить?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (result == DialogResult.Yes)
+            {
+                using (DataReader dataReader = new DataReader())
+                {
+                    using (OpenFileDialog dialog = new OpenFileDialog())
+                    {
+                        dialog.Title = "Открытие файла с расписанием";
+                        dialog.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory + @"Первичные файлы";
+                        if (dialog.ShowDialog() == DialogResult.OK)
+                        {
+                            dataReader.ReadOneFile(dialog.FileName);
+                            DBC.DBUpdate(dataReader);
+                            DBC.SendQueryToDB(toQuery);
+                            DBC.ListUpdate();
+                            FilterApplication();
+
+                            MessageBox.Show("Данные обновлены!", "Сообщение", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void очиститьБазуДанныхToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("Вы собираетесь очистить базу данных, удалив из нее все данные о расписании. Это действие необратимо. Продолжить?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (result == DialogResult.Yes)
+            {
+                foreach (string table in DBC.Tables)
+                {
+                    DBC.TruncateTable(table);
+                }
             }
         }
 
@@ -156,8 +203,8 @@ namespace CourseWork
             if (form.DialogResult != DialogResult.Cancel)
             {
                 toQuery.AddRange(Filters);
-                DBC.Query(toQuery);
-                dataGridView1.DataSource = DBC.dt;
+                DBC.SendQueryToDB(toQuery);
+                dataGridView1.DataSource = DBC.Timetable;
                 for (int i = 0; i < ColorConditions.Count; i++)
                     Coloring(i);
             }
@@ -176,6 +223,7 @@ namespace CourseWork
             SFD.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory + @"config";
             if (SFD.ShowDialog()==DialogResult.OK)
                 cb.ConfigWriter(SFD.FileName);
+            SFD.Dispose();
         }
 
         private void выбратьНастройкиИзСохраненныхToolStripMenuItem_Click(object sender, EventArgs e)
@@ -222,8 +270,8 @@ namespace CourseWork
             }
             toQuery.Add("professors|ID|-|-|timetable|professor|name|'" + (cbTeacher.SelectedItem as string).Trim() + "'");
             Filters.Add("professors|ID|-|-|timetable|professor|name|'" + (cbTeacher.SelectedItem as string).Trim() + "'");
-            DBC.Query(toQuery);
-            dataGridView1.DataSource = DBC.dt;
+            DBC.SendQueryToDB(toQuery);
+            dataGridView1.DataSource = DBC.Timetable;
         }
 
         private void cbCourse_SelectionChangeCommitted(object sender, EventArgs e)
@@ -248,8 +296,8 @@ namespace CourseWork
             }
             toQuery.Add("courses|ID|-|-|timetable|course|name|'" + (cbCourse.SelectedItem as string).Trim() + "'");
             Filters.Add("courses|ID|-|-|timetable|course|name|'" + (cbCourse.SelectedItem as string).Trim() + "'");
-            DBC.Query(toQuery);
-            dataGridView1.DataSource = DBC.dt;
+            DBC.SendQueryToDB(toQuery);
+            dataGridView1.DataSource = DBC.Timetable;
         }
 
         private void timebutton_Click(object sender, EventArgs e)
@@ -276,8 +324,8 @@ namespace CourseWork
             }
             toQuery.Add("timetable|-|-|-|-|-|date|" + dateStart.Value + "|" + dateEnd.Value);
             Filters.Add("timetable|-|-|-|-|-|date|" + dateStart.Value + "|" + dateEnd.Value);
-            DBC.Query(toQuery);
-            dataGridView1.DataSource = DBC.dt;
+            DBC.SendQueryToDB(toQuery);
+            dataGridView1.DataSource = DBC.Timetable;
         }
         #endregion MainFormFilters
     }

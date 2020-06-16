@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace CourseWork
 {
-    class DataReader : IDisposable
+    public class DataReader : IDisposable
     {
         private string[] WeekDays { get; } = new string[] { "понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресение" };
         private string[] Months { get; } = new string[] { "январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь" };
